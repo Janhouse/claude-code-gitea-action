@@ -78,8 +78,10 @@ export async function checkAndCommitOrDeleteBranch(
               }
 
               // Check if there are still staged changes after excluding output.txt
-              const stagedChanges = await $`git diff --cached --name-only`.quiet();
-              const hasStagedChanges = stagedChanges.stdout.toString().trim().length > 0;
+              const stagedChanges =
+                await $`git diff --cached --name-only`.quiet();
+              const hasStagedChanges =
+                stagedChanges.stdout.toString().trim().length > 0;
 
               if (hasStagedChanges) {
                 // Commit with a descriptive message
@@ -139,16 +141,21 @@ export async function checkAndCommitOrDeleteBranch(
     try {
       if (isGiteaInstance()) {
         // Gitea uses the branches API for deletion
-        const response = await fetch(`${process.env.GITEA_API_URL}/repos/${owner}/${repo}/branches/${encodeURIComponent(claudeBranch)}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `token ${process.env.GITHUB_TOKEN}`,
-            'Content-Type': 'application/json',
+        const response = await fetch(
+          `${process.env.GITEA_API_URL}/repos/${owner}/${repo}/branches/${encodeURIComponent(claudeBranch)}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `token ${process.env.GITHUB_TOKEN}`,
+              "Content-Type": "application/json",
+            },
           },
-        });
-        
+        );
+
         if (!response.ok) {
-          throw new Error(`Failed to delete branch: ${response.status} ${response.statusText}`);
+          throw new Error(
+            `Failed to delete branch: ${response.status} ${response.statusText}`,
+          );
         }
       } else {
         // GitHub uses git refs API for deletion

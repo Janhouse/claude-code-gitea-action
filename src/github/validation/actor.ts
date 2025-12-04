@@ -33,9 +33,11 @@ export async function checkHumanActor(
   // 1. They successfully authenticated to trigger the workflow
   // 2. Gitea doesn't have the same bot detection mechanisms as GitHub
   // 3. The risk is lower in self-hosted environments
-  
+
   if (actorType === undefined) {
-    console.log(`Gitea user detected (no type field), assuming human actor: ${githubContext.actor}`);
+    console.log(
+      `Gitea user detected (no type field), assuming human actor: ${githubContext.actor}`,
+    );
   } else {
     console.log(`Verified human actor: ${githubContext.actor}`);
   }

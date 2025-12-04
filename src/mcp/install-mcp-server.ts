@@ -108,7 +108,8 @@ export async function prepareMcpConfig(
           BRANCH_NAME: branch,
           REPO_DIR: process.env.GITHUB_WORKSPACE || process.cwd(),
           CLAUDE_GIT_NAME: process.env.CLAUDE_GIT_NAME || "Claude",
-          CLAUDE_GIT_EMAIL: process.env.CLAUDE_GIT_EMAIL || "claude@anthropic.com",
+          CLAUDE_GIT_EMAIL:
+            process.env.CLAUDE_GIT_EMAIL || "claude@anthropic.com",
           GITEA_API_URL: giteaApiUrl,
         },
       };

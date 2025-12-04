@@ -36,30 +36,31 @@ export async function checkWritePermissions(
     }
   } catch (error) {
     core.warning(`Direct permission check failed: ${error}`);
-    
+
     // Gitea alternative: check if user is a collaborator at all
     // In Gitea, even non-admins can check if a user is a collaborator
     try {
       core.info(`Attempting alternative collaborator check for ${actor}`);
-      
+
       await octokit.repos.checkCollaborator({
         owner: repository.owner,
         repo: repository.repo,
         username: actor,
       });
-      
+
       // If we reach here, the user is a collaborator
       // For a write-restricted action, we assume collaborators have write access
       // since they wouldn't be added as collaborators without some permissions
       core.info(`Actor ${actor} is confirmed as repository collaborator`);
       return true;
-      
     } catch (collaboratorError) {
       core.warning(`Collaborator check also failed: ${collaboratorError}`);
-      
+
       // Final fallback: if both permission and collaborator checks fail,
       // but the user can trigger this action, assume they have access
-      core.info(`Permission checks unavailable - assuming access based on workflow execution context`);
+      core.info(
+        `Permission checks unavailable - assuming access based on workflow execution context`,
+      );
       return true;
     }
   }

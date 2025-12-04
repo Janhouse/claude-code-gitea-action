@@ -58,7 +58,7 @@ export function buildAllowedToolsString(
     "mcp__local_git_ops__push_branch",
     "mcp__local_git_ops__create_pull_request",
     "mcp__local_git_ops__delete_files",
-    "mcp__local_git_ops__git_status"
+    "mcp__local_git_ops__git_status",
   );
 
   baseTools.push(

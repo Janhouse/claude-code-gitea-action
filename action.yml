@@ -74,6 +74,26 @@ inputs:
     description: "Claude Code settings as JSON string or path to settings JSON file"
     required: false
     default: ""
+  system_prompt:
+    description: "Override system prompt for Claude"
+    required: false
+    default: ""
+  append_system_prompt:
+    description: "Append additional instructions to the system prompt"
+    required: false
+    default: ""
+  claude_git_name:
+    description: "Git user.name for commits made by Claude"
+    required: false
+    default: "Claude"
+  claude_git_email:
+    description: "Git user.email for commits made by Claude"
+    required: false
+    default: "claude@anthropic.com"
+  path_to_claude_code_executable:
+    description: "Path to a custom Claude Code executable to use instead of installing"
+    required: false
+    default: ""
 
   # Auth configuration
   anthropic_api_key:
@@ -183,8 +203,16 @@ runs:
         bun install
         echo "Base-action dependencies installed"
         cd -
-        # Install Claude Code globally
-        bun install -g @anthropic-ai/claude-code@1.0.61
+        # Install Claude Code if no custom executable is provided
+        if [ -z "${{ inputs.path_to_claude_code_executable }}" ]; then
+          echo "Installing Claude Code globally..."
+          bun install -g @anthropic-ai/claude-code@2.0.58
+        else
+          echo "Using custom Claude Code executable: ${{ inputs.path_to_claude_code_executable }}"
+          # Add the directory containing the custom executable to PATH
+          CLAUDE_DIR=$(dirname "${{ inputs.path_to_claude_code_executable }}")
+          echo "$CLAUDE_DIR" >> "$GITHUB_PATH"
+        fi
 
     - name: Setup Network Restrictions
       if: steps.prepare.outputs.contains_trigger == 'true' && inputs.experimental_allowed_domains != ''
@@ -212,17 +240,21 @@ runs:
         INPUT_MAX_TURNS: ${{ inputs.max_turns }}
         INPUT_MCP_CONFIG: ${{ steps.prepare.outputs.mcp_config }}
         INPUT_SETTINGS: ${{ inputs.settings }}
-        INPUT_SYSTEM_PROMPT: ""
-        INPUT_APPEND_SYSTEM_PROMPT: ""
+        INPUT_SYSTEM_PROMPT: ${{ inputs.system_prompt }}
+        INPUT_APPEND_SYSTEM_PROMPT: ${{ inputs.append_system_prompt }}
         INPUT_TIMEOUT_MINUTES: ${{ inputs.timeout_minutes }}
         INPUT_CLAUDE_ENV: ${{ inputs.claude_env }}
         INPUT_FALLBACK_MODEL: ${{ inputs.fallback_model }}
 
         # Model configuration
-        ANTHROPIC_MODEL: ${{ inputs.model || inputs.anthropic_model }}
+        ANTHROPIC_MODEL: ${{ inputs.model || inputs.anthropic_model || env.ANTHROPIC_MODEL }}
         GITHUB_TOKEN: ${{ steps.prepare.outputs.GITHUB_TOKEN }}
         NODE_VERSION: ${{ env.NODE_VERSION }}
         DETAILED_PERMISSION_MESSAGES: "1"
+
+        # Git configuration for Claude commits
+        CLAUDE_GIT_NAME: ${{ inputs.claude_git_name }}
+        CLAUDE_GIT_EMAIL: ${{ inputs.claude_git_email }}
 
         # Provider configuration
         ANTHROPIC_API_KEY: ${{ inputs.anthropic_api_key }}

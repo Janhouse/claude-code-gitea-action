@@ -1,6 +1,6 @@
 import { $ } from "bun";
 import { homedir } from "os";
-import { readFile } from "fs/promises";
+import { readFile, access, constants } from "fs/promises";
 
 export async function setupClaudeCodeSettings(
   settingsInput?: string,
@@ -8,7 +8,41 @@ export async function setupClaudeCodeSettings(
 ) {
   const home = homeDir ?? homedir();
   const settingsPath = `${home}/.claude/settings.json`;
+  const cwd = process.cwd();
+
   console.log(`Setting up Claude settings at: ${settingsPath}`);
+  console.log(`Current working directory: ${cwd}`);
+
+  // Log project-level settings if they exist (Claude Code 2.x reads these natively)
+  const projectSettingsPath = `${cwd}/.claude/settings.json`;
+  const projectLocalSettingsPath = `${cwd}/.claude/settings.local.json`;
+
+  try {
+    await access(projectSettingsPath, constants.R_OK);
+    const projectSettings = await readFile(projectSettingsPath, "utf-8");
+    console.log(
+      `Found project settings at ${projectSettingsPath}:`,
+      projectSettings.substring(0, 500),
+    );
+  } catch {
+    console.log(`No project settings found at ${projectSettingsPath}`);
+  }
+
+  try {
+    await access(projectLocalSettingsPath, constants.R_OK);
+    const projectLocalSettings = await readFile(
+      projectLocalSettingsPath,
+      "utf-8",
+    );
+    console.log(
+      `Found project local settings at ${projectLocalSettingsPath}:`,
+      projectLocalSettings.substring(0, 500),
+    );
+  } catch {
+    console.log(
+      `No project local settings found at ${projectLocalSettingsPath}`,
+    );
+  }
 
   // Ensure .claude directory exists
   console.log(`Creating .claude directory...`);
@@ -59,10 +93,13 @@ export async function setupClaudeCodeSettings(
     console.log(`Merged settings with input settings`);
   }
 
-  // Always set enableAllProjectMcpServers to true
+  // Always set enableAllProjectMcpServers to true to ensure project MCP servers are loaded
   settings.enableAllProjectMcpServers = true;
   console.log(`Updated settings with enableAllProjectMcpServers: true`);
 
   await $`echo ${JSON.stringify(settings, null, 2)} > ${settingsPath}`.quiet();
   console.log(`Settings saved successfully`);
+  console.log(
+    `Note: Claude Code 2.x will also read project-level settings from ${cwd}/.claude/`,
+  );
 }

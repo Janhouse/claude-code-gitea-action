@@ -16,6 +16,10 @@ export function checkContainsTrigger(context: ParsedGitHubContext): boolean {
     inputs: { assigneeTrigger, labelTrigger, triggerPhrase, directPrompt },
   } = context;
 
+  console.log(
+    `Checking trigger: event=${context.eventName}, action=${context.eventAction}, phrase='${triggerPhrase}', assignee='${assigneeTrigger}', direct='${directPrompt}'`,
+  );
+
   // If direct prompt is provided, always trigger
   if (directPrompt) {
     console.log(`Direct prompt provided, triggering action`);
@@ -91,6 +95,21 @@ export function checkContainsTrigger(context: ParsedGitHubContext): boolean {
     if (regex.test(prTitle)) {
       console.log(
         `Pull request title contains exact trigger phrase '${triggerPhrase}'`,
+      );
+      return true;
+    }
+
+    // Check if trigger user is in requested reviewers (treat same as mention in text)
+    const triggerUser = triggerPhrase.replace(/^@/, "");
+    const requestedReviewers =
+      context.payload.pull_request.requested_reviewers || [];
+    const isReviewerRequested = requestedReviewers.some(
+      (reviewer) => "login" in reviewer && reviewer.login === triggerUser,
+    );
+
+    if (isReviewerRequested) {
+      console.log(
+        `Pull request has '${triggerUser}' as requested reviewer (treating as trigger)`,
       );
       return true;
     }

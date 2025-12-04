@@ -74,7 +74,10 @@ export async function createInitialComment(
           body: initialBody,
         });
       } catch (error) {
-        console.warn("Review comments not supported, falling back to issue comment:", error);
+        console.warn(
+          "Review comments not supported, falling back to issue comment:",
+          error,
+        );
         // Fall back to regular issue comment for Gitea compatibility
         response = await octokit.rest.issues.createComment({
           owner,

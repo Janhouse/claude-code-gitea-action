@@ -6,7 +6,7 @@ import { getServerUrl, isGiteaInstance } from "../api/config";
 // Create image regex based on the current platform
 function createImageRegex(): RegExp {
   const serverUrl = getServerUrl();
-  
+
   // For Gitea, we might not have the same user-attachments structure
   // This is a placeholder that can be adjusted based on Gitea's image handling
   if (isGiteaInstance()) {
@@ -16,7 +16,7 @@ function createImageRegex(): RegExp {
       "g",
     );
   }
-  
+
   // GitHub format
   return new RegExp(
     `!\\[[^\\]]*\\]\\((${serverUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\/user-attachments\\/assets\\/[^)]+)\\)`,
@@ -127,7 +127,10 @@ export async function downloadCommentImages(
             });
             bodyHtml = response.data.body_html;
           } catch (error) {
-            console.warn("Review comments not supported, using markdown body:", error);
+            console.warn(
+              "Review comments not supported, using markdown body:",
+              error,
+            );
             // Fall back to markdown for Gitea compatibility
             bodyHtml = undefined;
           }
@@ -146,7 +149,10 @@ export async function downloadCommentImages(
             });
             bodyHtml = response.data.body_html;
           } catch (error) {
-            console.warn("Review bodies not supported, using markdown body:", error);
+            console.warn(
+              "Review bodies not supported, using markdown body:",
+              error,
+            );
             // Fall back to markdown for Gitea compatibility
             bodyHtml = undefined;
           }

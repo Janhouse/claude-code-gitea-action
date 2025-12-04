@@ -25,13 +25,18 @@ export function createOctokit(token: string): Octokits {
   };
 }
 
-export function createGitPlatformClient(token: string, giteaApiUrl?: string): GitPlatformClient {
+export function createGitPlatformClient(
+  token: string,
+  giteaApiUrl?: string,
+): GitPlatformClient {
   if (giteaApiUrl) {
     return new GiteaApiClient(token, giteaApiUrl);
   }
   return createOctokit(token);
 }
 
-export function isGiteaClient(client: GitPlatformClient): client is GiteaApiClient {
+export function isGiteaClient(
+  client: GitPlatformClient,
+): client is GiteaApiClient {
   return client instanceof GiteaApiClient;
 }

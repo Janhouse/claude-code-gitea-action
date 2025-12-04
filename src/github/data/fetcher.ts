@@ -266,7 +266,6 @@ export async function fetchGitHubData({
   };
 }
 
-
 export async function fetchUserDisplayName(
   octokits: Octokits,
   login: string,

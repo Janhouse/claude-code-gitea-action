@@ -9,7 +9,7 @@ export function createJobRunLink(
   runId: string,
 ): string {
   // For Gitea, use a different path structure or skip actions link if not supported
-  const jobRunUrl = isGiteaInstance() 
+  const jobRunUrl = isGiteaInstance()
     ? `${getServerUrl()}/${owner}/${repo}` // Gitea doesn't have GitHub Actions UI
     : `${getServerUrl()}/${owner}/${repo}/actions/runs/${runId}`;
   const linkText = isGiteaInstance() ? "View repository" : "View job run";

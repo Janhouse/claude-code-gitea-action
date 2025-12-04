@@ -379,7 +379,10 @@ server.tool(
         throw new Error(`Failed to create PR: ${response.status} ${errorText}`);
       }
 
-      const prData = await response.json() as { number: number; html_url: string };
+      const prData = (await response.json()) as {
+        number: number;
+        html_url: string;
+      };
 
       return {
         content: [
