@@ -1,4 +1,5 @@
 import * as github from "@actions/github";
+import * as fs from "node:fs";
 import type {
   IssuesEvent,
   IssuesAssignedEvent,
@@ -48,6 +49,29 @@ export type ParsedGitHubContext = {
 
 export function parseGitHubContext(): ParsedGitHubContext {
   const context = github.context;
+
+  // Allow callers to inject a synthetic event payload + name. Useful when
+  // invoking this action from a `workflow_dispatch` trigger (e.g. via a
+  // webhook receiver like gitea-claude-bot) where the natural event the
+  // action expects doesn't exist. Set CLAUDE_SYNTH_EVENT_PATH to a JSON
+  // file with an issue/PR/comment-shaped payload, and
+  // CLAUDE_SYNTH_EVENT_NAME to one of the supported event names below.
+  const synthPath = process.env.CLAUDE_SYNTH_EVENT_PATH;
+  const synthName = process.env.CLAUDE_SYNTH_EVENT_NAME;
+  if (synthPath && synthName) {
+    const synth = JSON.parse(fs.readFileSync(synthPath, "utf8"));
+    (context as { eventName: string }).eventName = synthName;
+    (context as { payload: unknown }).payload = synth;
+    if (synth.repository) {
+      (context as { repo: { owner: string; repo: string } }).repo = {
+        owner: synth.repository.owner?.login ?? synth.repository.owner ?? "",
+        repo: synth.repository.name ?? "",
+      };
+    }
+    if (synth.sender?.login) {
+      (context as { actor: string }).actor = synth.sender.login;
+    }
+  }
 
   const modeInput = process.env.MODE ?? DEFAULT_MODE;
   if (!isValidMode(modeInput)) {
