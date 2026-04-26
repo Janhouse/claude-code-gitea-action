@@ -56,11 +56,18 @@ async function run() {
 
     // Step 6: Create initial tracking comment (mode-aware)
     // Some modes (e.g., agent mode) may not need tracking comments
+    // BUT: if the caller passed EXISTING_COMMENT_ID we still want to
+    // run the adoption flow — that's the only thing that exports
+    // CLAUDE_COMMENT_ID to the agent so live progress updates via
+    // mcp__gitea_api__update_claude_comment work. Without this, the
+    // agent's progress comment only updates once at the very end via
+    // the workflow's footer step.
     let commentId: number | undefined;
     let commentData:
       | Awaited<ReturnType<typeof createInitialComment>>
       | undefined;
-    if (mode.shouldCreateTrackingComment()) {
+    const hasAdoptId = /^\d+$/.test(process.env.EXISTING_COMMENT_ID?.trim() ?? "");
+    if (mode.shouldCreateTrackingComment() || hasAdoptId) {
       commentData = await createInitialComment(octokit.rest, context);
       commentId = commentData.id;
     }
