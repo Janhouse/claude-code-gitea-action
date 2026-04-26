@@ -28,6 +28,38 @@ export async function createInitialComment(
   try {
     let response;
 
+    // If a caller has pre-created an "ack" comment and passed its id via
+    // EXISTING_COMMENT_ID, take it over: update that comment in place
+    // rather than creating a new one. Lets the "👀 Got it" ack and the
+    // agent's progress comment be the same message.
+    const adoptId = process.env.EXISTING_COMMENT_ID?.trim();
+    if (adoptId && /^\d+$/.test(adoptId)) {
+      try {
+        response = await octokit.rest.issues.updateComment({
+          owner,
+          repo,
+          comment_id: Number(adoptId),
+          body: initialBody,
+        });
+
+        const githubOutput = process.env.GITHUB_OUTPUT!;
+        appendFileSync(githubOutput, `claude_comment_id=${response.data.id}\n`);
+        console.log(
+          `✅ Adopted existing comment ${response.data.id} (no new comment created)`,
+        );
+        return response.data;
+      } catch (err) {
+        // PATCH failed — fall through to the normal create flow. Most
+        // likely cause: the EXISTING_COMMENT_ID was authored by a
+        // different user than the bot's PAT (Gitea only lets the
+        // author or admin edit a comment).
+        console.warn(
+          `Could not adopt EXISTING_COMMENT_ID=${adoptId}, creating a new comment instead:`,
+          err,
+        );
+      }
+    }
+
     if (
       context.inputs.useStickyComment &&
       context.isPR &&

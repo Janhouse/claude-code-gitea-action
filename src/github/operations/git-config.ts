@@ -28,9 +28,25 @@ export async function configureGitAuth(
       ? "users.noreply.github.com"
       : `users.noreply.${serverUrl.hostname}`;
 
+  // Allow callers to override the default git author. Useful when the
+  // auto-generated `<id>+<name>@users.noreply.<host>` pattern looks
+  // ugly on a self-hosted Gitea (e.g. `9+claude@users.noreply.git.example.com`).
+  const overrideName = process.env.GIT_USER_NAME?.trim();
+  const overrideEmail = process.env.GIT_USER_EMAIL?.trim();
+
   // Configure git user based on the comment creator
   console.log("Configuring git user...");
-  if (user) {
+  if (overrideName || overrideEmail) {
+    const name = overrideName || user?.login || "github-actions[bot]";
+    const email =
+      overrideEmail ||
+      (user
+        ? `${user.id}+${user.login}@${noreplyDomain}`
+        : `41898282+github-actions[bot]@${noreplyDomain}`);
+    console.log(`Setting git user from override: ${name} <${email}>`);
+    await $`git config user.name "${name}"`;
+    await $`git config user.email "${email}"`;
+  } else if (user) {
     const botName = user.login;
     const botId = user.id;
     console.log(`Setting git user as ${botName}...`);

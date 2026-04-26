@@ -419,9 +419,20 @@ function getCommitInstructions(
   context: PreparedContext,
   useCommitSigning: boolean,
 ): string {
+  const coAuthorServerUrl = (() => {
+    try {
+      return new URL(getServerUrl()).hostname;
+    } catch {
+      return "github.com";
+    }
+  })();
+  const coAuthorNoreplyDomain =
+    coAuthorServerUrl === "github.com"
+      ? "users.noreply.github.com"
+      : `users.noreply.${coAuthorServerUrl}`;
   const coAuthorLine =
     (githubData.triggerDisplayName ?? context.triggerUsername !== "Unknown")
-      ? `Co-authored-by: ${githubData.triggerDisplayName ?? context.triggerUsername} <${context.triggerUsername}@users.noreply.github.com>`
+      ? `Co-authored-by: ${githubData.triggerDisplayName ?? context.triggerUsername} <${context.triggerUsername}@${coAuthorNoreplyDomain}>`
       : "";
 
   if (useCommitSigning) {

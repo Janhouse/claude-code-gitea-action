@@ -135,6 +135,18 @@ inputs:
     description: "Use just one comment to deliver issue/PR comments"
     required: false
     default: "false"
+  existing_comment_id:
+    description: "Numeric id of an existing issue/PR comment to take over (update in place) instead of posting a new tracking comment. Useful when an upstream service already posted an ack comment and you'd rather have the agent edit that than create a duplicate. Falls back to creating a new comment if the update fails (e.g. comment author mismatch)."
+    required: false
+    default: ""
+  git_user_name:
+    description: "Override the git author name used for commits the agent makes. Default is the bot user's login."
+    required: false
+    default: ""
+  git_user_email:
+    description: "Override the git author email used for commits the agent makes. Default is `<bot-id>+<bot-login>@users.noreply.<gitea-host>` which can look ugly on a self-hosted Gitea — set this to a friendlier address (e.g. `claude-bot@your-org.com`)."
+    required: false
+    default: ""
   use_commit_signing:
     description: "Enable commit signing using GitHub's commit signature verification. When false, Claude uses standard git commands"
     required: false
@@ -190,6 +202,9 @@ runs:
         GITEA_SERVER_URL: ${{ inputs.gitea_server_url }}
         GITHUB_RUN_ID: ${{ github.run_id }}
         USE_STICKY_COMMENT: ${{ inputs.use_sticky_comment }}
+        EXISTING_COMMENT_ID: ${{ inputs.existing_comment_id }}
+        GIT_USER_NAME: ${{ inputs.git_user_name }}
+        GIT_USER_EMAIL: ${{ inputs.git_user_email }}
         ACTIONS_TOKEN: ${{ github.token }}
         ADDITIONAL_PERMISSIONS: ${{ inputs.additional_permissions }}
         USE_COMMIT_SIGNING: ${{ inputs.use_commit_signing }}
