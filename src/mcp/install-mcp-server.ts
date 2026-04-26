@@ -186,6 +186,13 @@ export async function prepareMcpConfig(
           REPO_NAME: repo,
           PR_NUMBER: context.entityNumber.toString(),
           RUNNER_TEMP: process.env.RUNNER_TEMP || "/tmp",
+          // Without these, the child process resolves GITHUB_API_URL
+          // via config.ts at import time, but its own env doesn't have
+          // GITEA_API_URL, so Octokit falls back to api.github.com and
+          // every CI lookup against a Gitea repo errors out as
+          // "network blocked" / 404.
+          GITEA_API_URL: giteaApiUrl ?? "",
+          GITHUB_API_URL: GITHUB_API_URL,
         },
       };
     }
