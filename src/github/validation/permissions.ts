@@ -14,6 +14,16 @@ export async function checkWritePermissions(
 ): Promise<boolean> {
   const { repository, actor } = context;
 
+  // The repo owner is always implicitly admin on their own repo. On Gitea
+  // (and to a lesser extent on GitHub), `getCollaboratorPermissionLevel`
+  // can fail to acknowledge this — owners often aren't enumerated in the
+  // collaborators list, and the endpoint may return a non-admin level for
+  // them. Short-circuit here to avoid that false negative.
+  if (actor.toLowerCase() === repository.owner.toLowerCase()) {
+    core.info(`Actor ${actor} is the repository owner — granting write access`);
+    return true;
+  }
+
   try {
     core.info(`Checking permissions for actor: ${actor}`);
 
