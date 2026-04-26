@@ -147,6 +147,10 @@ inputs:
     description: "Override the git author email used for commits the agent makes. Default is `<bot-id>+<bot-login>@users.noreply.<gitea-host>` which can look ugly on a self-hosted Gitea — set this to a friendlier address (e.g. `claude-bot@your-org.com`)."
     required: false
     default: ""
+  add_co_author:
+    description: "Add a `Co-authored-by` trailer to commits crediting the user who triggered the run. Default false — webhook/agent invocations often have a 'trigger user' that didn't really co-author anything, and Gitea noreply emails look ugly. Set to 'true' to opt in."
+    required: false
+    default: "false"
   use_commit_signing:
     description: "Enable commit signing using GitHub's commit signature verification. When false, Claude uses standard git commands"
     required: false
@@ -205,6 +209,7 @@ runs:
         EXISTING_COMMENT_ID: ${{ inputs.existing_comment_id }}
         GIT_USER_NAME: ${{ inputs.git_user_name }}
         GIT_USER_EMAIL: ${{ inputs.git_user_email }}
+        ADD_CO_AUTHOR: ${{ inputs.add_co_author }}
         ACTIONS_TOKEN: ${{ github.token }}
         ADDITIONAL_PERMISSIONS: ${{ inputs.additional_permissions }}
         USE_COMMIT_SIGNING: ${{ inputs.use_commit_signing }}

@@ -419,6 +419,15 @@ function getCommitInstructions(
   context: PreparedContext,
   useCommitSigning: boolean,
 ): string {
+  // Co-authored-by trailer is opt-in. By default we skip it because:
+  // (a) agent-style invocations (workflow_dispatch from a webhook
+  //     receiver, scheduled CI fix-it runs) have a "trigger user" but
+  //     they didn't really co-author the commit;
+  // (b) on Gitea instances the noreply email
+  //     `<user>@users.noreply.<host>` isn't a real address and looks
+  //     odd in commit history.
+  // Set ADD_CO_AUTHOR=true on the prepare step to re-enable.
+  const addCoAuthor = process.env.ADD_CO_AUTHOR?.toLowerCase() === "true";
   const coAuthorServerUrl = (() => {
     try {
       return new URL(getServerUrl()).hostname;
@@ -431,9 +440,11 @@ function getCommitInstructions(
       ? "users.noreply.github.com"
       : `users.noreply.${coAuthorServerUrl}`;
   const coAuthorLine =
-    (githubData.triggerDisplayName ?? context.triggerUsername !== "Unknown")
-      ? `Co-authored-by: ${githubData.triggerDisplayName ?? context.triggerUsername} <${context.triggerUsername}@${coAuthorNoreplyDomain}>`
-      : "";
+    !addCoAuthor
+      ? ""
+      : (githubData.triggerDisplayName ?? context.triggerUsername !== "Unknown")
+        ? `Co-authored-by: ${githubData.triggerDisplayName ?? context.triggerUsername} <${context.triggerUsername}@${coAuthorNoreplyDomain}>`
+        : "";
 
   if (useCommitSigning) {
     if (eventData.isPR && !eventData.claudeBranch) {
