@@ -56,20 +56,28 @@ export function parseGitHubContext(): ParsedGitHubContext {
   // action expects doesn't exist. Set CLAUDE_SYNTH_EVENT_PATH to a JSON
   // file with an issue/PR/comment-shaped payload, and
   // CLAUDE_SYNTH_EVENT_NAME to one of the supported event names below.
+  //
+  // We read into local vars (rather than mutating context) because
+  // @actions/github's Context properties are readonly getters.
+  let eventName = context.eventName;
+  let payload: typeof context.payload = context.payload;
+  let repoOwner = context.repo.owner;
+  let repoName = context.repo.repo;
+  let actor = context.actor;
+
   const synthPath = process.env.CLAUDE_SYNTH_EVENT_PATH;
   const synthName = process.env.CLAUDE_SYNTH_EVENT_NAME;
   if (synthPath && synthName) {
     const synth = JSON.parse(fs.readFileSync(synthPath, "utf8"));
-    (context as { eventName: string }).eventName = synthName;
-    (context as { payload: unknown }).payload = synth;
+    eventName = synthName;
+    payload = synth;
     if (synth.repository) {
-      (context as { repo: { owner: string; repo: string } }).repo = {
-        owner: synth.repository.owner?.login ?? synth.repository.owner ?? "",
-        repo: synth.repository.name ?? "",
-      };
+      repoOwner =
+        synth.repository.owner?.login ?? synth.repository.owner ?? repoOwner;
+      repoName = synth.repository.name ?? repoName;
     }
     if (synth.sender?.login) {
-      (context as { actor: string }).actor = synth.sender.login;
+      actor = synth.sender.login;
     }
   }
 
@@ -80,14 +88,14 @@ export function parseGitHubContext(): ParsedGitHubContext {
 
   const commonFields = {
     runId: process.env.GITHUB_RUN_NUMBER!,
-    eventName: context.eventName,
-    eventAction: context.payload.action,
+    eventName,
+    eventAction: payload.action,
     repository: {
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-      full_name: `${context.repo.owner}/${context.repo.repo}`,
+      owner: repoOwner,
+      repo: repoName,
+      full_name: `${repoOwner}/${repoName}`,
     },
-    actor: context.actor,
+    actor,
     inputs: {
       mode: modeInput as ModeName,
       triggerPhrase: process.env.TRIGGER_PHRASE ?? "@claude",
@@ -108,53 +116,50 @@ export function parseGitHubContext(): ParsedGitHubContext {
     },
   };
 
-  switch (context.eventName) {
+  switch (eventName) {
     case "issues": {
       return {
         ...commonFields,
-        payload: context.payload as IssuesEvent,
-        entityNumber: (context.payload as IssuesEvent).issue.number,
+        payload: payload as IssuesEvent,
+        entityNumber: (payload as IssuesEvent).issue.number,
         isPR: false,
       };
     }
     case "issue_comment": {
       return {
         ...commonFields,
-        payload: context.payload as IssueCommentEvent,
-        entityNumber: (context.payload as IssueCommentEvent).issue.number,
-        isPR: Boolean(
-          (context.payload as IssueCommentEvent).issue.pull_request,
-        ),
+        payload: payload as IssueCommentEvent,
+        entityNumber: (payload as IssueCommentEvent).issue.number,
+        isPR: Boolean((payload as IssueCommentEvent).issue.pull_request),
       };
     }
     case "pull_request": {
       return {
         ...commonFields,
-        payload: context.payload as PullRequestEvent,
-        entityNumber: (context.payload as PullRequestEvent).pull_request.number,
+        payload: payload as PullRequestEvent,
+        entityNumber: (payload as PullRequestEvent).pull_request.number,
         isPR: true,
       };
     }
     case "pull_request_review": {
       return {
         ...commonFields,
-        payload: context.payload as PullRequestReviewEvent,
-        entityNumber: (context.payload as PullRequestReviewEvent).pull_request
-          .number,
+        payload: payload as PullRequestReviewEvent,
+        entityNumber: (payload as PullRequestReviewEvent).pull_request.number,
         isPR: true,
       };
     }
     case "pull_request_review_comment": {
       return {
         ...commonFields,
-        payload: context.payload as PullRequestReviewCommentEvent,
-        entityNumber: (context.payload as PullRequestReviewCommentEvent)
-          .pull_request.number,
+        payload: payload as PullRequestReviewCommentEvent,
+        entityNumber: (payload as PullRequestReviewCommentEvent).pull_request
+          .number,
         isPR: true,
       };
     }
     default:
-      throw new Error(`Unsupported event type: ${context.eventName}`);
+      throw new Error(`Unsupported event type: ${eventName}`);
   }
 }
 
