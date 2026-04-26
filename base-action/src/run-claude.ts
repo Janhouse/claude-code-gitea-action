@@ -300,9 +300,15 @@ export async function runClaude(promptPath: string, options: ClaudeOptions) {
     try {
       await writeFile("output.txt", output);
 
-      // Process output.txt into JSON and save to execution file
-      const { stdout: jsonOutput } = await execAsync("jq -s '.' output.txt");
-      await writeFile(EXECUTION_FILE, jsonOutput);
+      // Stream jq's output straight to the execution file via shell
+      // redirect — Node's exec/execAsync default maxBuffer is 1 MB, which
+      // is easily exceeded by long agent runs (74-turn runs produce
+      // multi-MB JSON). With `>` redirect, jq writes the file directly
+      // and Node's stdout is empty, so maxBuffer never matters.
+      await execAsync(
+        `jq -s '.' output.txt > "${EXECUTION_FILE}"`,
+        { maxBuffer: 100 * 1024 * 1024 },
+      );
 
       console.log(`Log saved to ${EXECUTION_FILE}`);
     } catch (e) {
@@ -318,8 +324,10 @@ export async function runClaude(promptPath: string, options: ClaudeOptions) {
     if (output) {
       try {
         await writeFile("output.txt", output);
-        const { stdout: jsonOutput } = await execAsync("jq -s '.' output.txt");
-        await writeFile(EXECUTION_FILE, jsonOutput);
+        await execAsync(
+          `jq -s '.' output.txt > "${EXECUTION_FILE}"`,
+          { maxBuffer: 100 * 1024 * 1024 },
+        );
         core.setOutput("execution_file", EXECUTION_FILE);
       } catch (e) {
         // Ignore errors when processing output during failure
