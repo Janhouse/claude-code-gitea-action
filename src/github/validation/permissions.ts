@@ -37,7 +37,15 @@ export async function checkWritePermissions(
     const permissionLevel = response.data.permission;
     core.info(`Permission level retrieved: ${permissionLevel}`);
 
-    if (permissionLevel === "admin" || permissionLevel === "write") {
+    // Gitea returns "owner" for the repo owner (and for users assigned
+    // owner-level access via org/team) — this is *higher* than admin.
+    // GitHub only returns admin/write/read/none, so accepting "owner"
+    // here is Gitea-specific but harmless on GitHub.
+    if (
+      permissionLevel === "admin" ||
+      permissionLevel === "write" ||
+      permissionLevel === "owner"
+    ) {
       core.info(`Actor has write access: ${permissionLevel}`);
       return true;
     } else {

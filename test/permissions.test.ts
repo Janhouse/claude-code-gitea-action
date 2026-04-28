@@ -102,6 +102,18 @@ describe("checkWritePermissions", () => {
     expect(coreInfoSpy).toHaveBeenCalledWith("Actor has write access: write");
   });
 
+  test("should return true for owner permissions (Gitea)", async () => {
+    // Gitea returns "owner" for repo owners and org-owner-level access,
+    // a level GitHub doesn't surface. Should be treated as ≥ write.
+    const mockOctokit = createMockOctokit("owner");
+    const context = createContext();
+
+    const result = await checkWritePermissions(mockOctokit, context);
+
+    expect(result).toBe(true);
+    expect(coreInfoSpy).toHaveBeenCalledWith("Actor has write access: owner");
+  });
+
   test("should return false for read permissions", async () => {
     const mockOctokit = createMockOctokit("read");
     const context = createContext();
