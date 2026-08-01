@@ -115,7 +115,11 @@ runs:
 
     - name: Install Claude Code
       shell: bash
-      run: bun install -g @anthropic-ai/claude-code@2.1.120
+      # Only applies when this composite is used standalone. The parent
+      # action.yml bypasses it (it runs base-action/src/index.ts directly)
+      # and installs its own pin; keep the two in sync so the version here
+      # isn't mistaken for the one a claude-code-action run uses.
+      run: bun install -g @anthropic-ai/claude-code@2.1.220
 
     - name: Run Claude Code Action
       shell: bash

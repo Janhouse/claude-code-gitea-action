@@ -85,6 +85,14 @@ export function prepareRunConfig(
   }
   if (options.mcpConfig) {
     claudeArgs.push("--mcp-config", options.mcpConfig);
+    // Load ONLY the servers we just passed. Without this, Claude Code also
+    // picks up a `.mcp.json` from the working directory — which, in this
+    // action, is an untrusted checkout of whatever repo triggered the run.
+    // Combined with `enableAllProjectMcpServers: true` (set unconditionally
+    // in setup-claude-code-settings.ts) those servers are auto-approved and
+    // *spawned*, i.e. arbitrary command execution at session startup, before
+    // any permission mode or allowlist gets a say.
+    claudeArgs.push("--strict-mcp-config");
   }
   if (options.systemPrompt) {
     claudeArgs.push("--system-prompt", options.systemPrompt);

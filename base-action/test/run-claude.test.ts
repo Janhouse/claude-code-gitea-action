@@ -61,6 +61,9 @@ describe("prepareRunConfig", () => {
 
     expect(prepared.claudeArgs).toContain("--mcp-config");
     expect(prepared.claudeArgs).toContain("/path/to/mcp-config.json");
+    // Servers we pass explicitly, and nothing else — in particular not a
+    // `.mcp.json` sitting in the untrusted checkout.
+    expect(prepared.claudeArgs).toContain("--strict-mcp-config");
   });
 
   test("should include system prompt in command arguments", () => {
@@ -111,6 +114,7 @@ describe("prepareRunConfig", () => {
     expect(prepared.claudeArgs).not.toContain("--disallowedTools");
     expect(prepared.claudeArgs).not.toContain("--max-turns");
     expect(prepared.claudeArgs).not.toContain("--mcp-config");
+    expect(prepared.claudeArgs).not.toContain("--strict-mcp-config");
     expect(prepared.claudeArgs).not.toContain("--system-prompt");
     expect(prepared.claudeArgs).not.toContain("--append-system-prompt");
     expect(prepared.claudeArgs).not.toContain("--fallback-model");
@@ -160,6 +164,7 @@ describe("prepareRunConfig", () => {
       "3",
       "--mcp-config",
       "/path/to/config.json",
+      "--strict-mcp-config",
       "--system-prompt",
       "You are a helpful assistant",
       "--append-system-prompt",

@@ -223,10 +223,18 @@ runs:
         bun install
         echo "Base-action dependencies installed"
         cd -
-        # Install Claude Code if no custom executable is provided
+        # Install Claude Code if no custom executable is provided.
+        #
+        # THIS is the version that actually runs: the step below invokes
+        # base-action/src/index.ts directly rather than going through
+        # base-action/action.yml, so that composite's own pin never applies.
+        #
+        # Must stay >= 2.1.86 — the "auto" permission mode does not exist
+        # before that, and `permissions.defaultMode: "auto"` on an older CLI
+        # silently leaves the session in `default` mode.
         if [ -z "${{ inputs.path_to_claude_code_executable }}" ]; then
           echo "Installing Claude Code globally..."
-          bun install -g @anthropic-ai/claude-code@2.0.58
+          bun install -g @anthropic-ai/claude-code@2.1.220
         else
           echo "Using custom Claude Code executable: ${{ inputs.path_to_claude_code_executable }}"
           # Add the directory containing the custom executable to PATH
