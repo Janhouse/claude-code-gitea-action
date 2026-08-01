@@ -232,9 +232,22 @@ runs:
         # Must stay >= 2.1.86 — the "auto" permission mode does not exist
         # before that, and `permissions.defaultMode: "auto"` on an older CLI
         # silently leaves the session in `default` mode.
+        #
+        # Install with npm, NOT bun. From 2.1.x the package ships a native
+        # binary (`bin` is `bin/claude.exe`, not a `cli.js`) that a
+        # `postinstall: node install.cjs` hook links from a platform-specific
+        # optional dependency. Bun does not run postinstall scripts unless the
+        # package is explicitly trusted, so `bun install -g` reports success
+        # and leaves a stub that dies with
+        #   ENOEXEC: unknown error, posix_spawn 'claude'
+        # the moment base-action tries to spawn it. 2.0.58 was a plain JS
+        # entry point, which is why bun was fine until the bump.
         if [ -z "${{ inputs.path_to_claude_code_executable }}" ]; then
           echo "Installing Claude Code globally..."
-          bun install -g @anthropic-ai/claude-code@2.1.220
+          npm install -g @anthropic-ai/claude-code@2.1.220
+          # Fail here, with the install log still in view, rather than
+          # several steps later inside a posix_spawn error.
+          claude --version
         else
           echo "Using custom Claude Code executable: ${{ inputs.path_to_claude_code_executable }}"
           # Add the directory containing the custom executable to PATH

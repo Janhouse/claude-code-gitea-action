@@ -119,7 +119,12 @@ runs:
       # action.yml bypasses it (it runs base-action/src/index.ts directly)
       # and installs its own pin; keep the two in sync so the version here
       # isn't mistaken for the one a claude-code-action run uses.
-      run: bun install -g @anthropic-ai/claude-code@2.1.220
+      #
+      # npm, not bun: 2.1.x ships a native binary linked by a postinstall
+      # hook, and bun skips postinstall scripts — see the parent action.yml.
+      run: |
+        npm install -g @anthropic-ai/claude-code@2.1.220
+        claude --version
 
     - name: Run Claude Code Action
       shell: bash
