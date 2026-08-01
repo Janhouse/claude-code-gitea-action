@@ -637,26 +637,27 @@ server.tool(
 );
 
 // Update issue
+//
+// NB: deliberately no `labels` parameter. Gitea's EditIssueOption has no
+// labels field, so PATCH /issues/{index} silently drops any labels sent
+// alongside it and still returns 200 — the caller sees success while
+// nothing was applied. Labels have their own endpoints; see
+// add_issue_labels / remove_issue_label below.
 server.tool(
   "update_issue",
-  "Update an existing issue",
+  "Update an existing issue's title, body, or state. Does NOT handle labels — use add_issue_labels or remove_issue_label for those.",
   {
     issue_number: z.number().describe("The issue number to update"),
     title: z.string().optional().describe("New title"),
     body: z.string().optional().describe("New body"),
     state: z.enum(["open", "closed"]).optional().describe("New state"),
-    labels: z
-      .array(z.string())
-      .optional()
-      .describe("New labels (replaces existing)"),
   },
-  async ({ issue_number, title, body, state, labels }) => {
+  async ({ issue_number, title, body, state }) => {
     try {
       const updateData: Record<string, unknown> = {};
       if (title !== undefined) updateData.title = title;
       if (body !== undefined) updateData.body = body;
       if (state !== undefined) updateData.state = state;
-      if (labels !== undefined) updateData.labels = labels;
 
       const issue = await giteaRequest(
         `/repos/${REPO_OWNER}/${REPO_NAME}/issues/${issue_number}`,
@@ -681,6 +682,192 @@ server.tool(
           {
             type: "text",
             text: `Error updating issue: ${errorMessage}`,
+          },
+        ],
+      };
+    }
+  },
+);
+
+// --- Issue / PR labels -----------------------------------------------------
+//
+// Gitea keeps labels off EditIssueOption and on their own endpoints:
+//   GET    /repos/{o}/{r}/issues/{index}/labels        list
+//   POST   /repos/{o}/{r}/issues/{index}/labels        add (keeps existing)
+//   PUT    /repos/{o}/{r}/issues/{index}/labels        replace all
+//   DELETE /repos/{o}/{r}/issues/{index}/labels/{id}   remove one
+//
+// A pull request *is* an issue in Gitea, so the PR number works as {index}
+// on all of these. `labels` accepts either label IDs or label names, but not
+// a mix of both; we always send names and let Gitea resolve them.
+//
+// The sharp edge: a name that doesn't exist in the repo is resolved to
+// nothing and dropped, so the request still returns 200 with the label
+// silently not applied. Both tools below therefore verify against the
+// response rather than trusting the status code.
+
+type GiteaLabel = { id: number; name: string };
+
+function labelNames(labels: unknown): string[] {
+  return Array.isArray(labels)
+    ? (labels as GiteaLabel[]).map((l) => l?.name).filter(Boolean)
+    : [];
+}
+
+server.tool(
+  "add_issue_labels",
+  "Add one or more labels to an issue or pull request (existing labels are kept). Use the PR number for pull requests.",
+  {
+    issue_number: z
+      .number()
+      .describe("The issue or pull request number to label"),
+    labels: z
+      .array(z.string())
+      .min(1)
+      .describe("Label names to add. Must already exist in the repository."),
+  },
+  async ({ issue_number, labels }) => {
+    try {
+      const result = await giteaRequest(
+        `/repos/${REPO_OWNER}/${REPO_NAME}/issues/${issue_number}/labels`,
+        "POST",
+        { labels },
+      );
+
+      const applied = labelNames(result);
+      const missing = labels.filter((l) => !applied.includes(l));
+
+      if (missing.length > 0) {
+        // 200 but nothing happened for these — almost always a typo or a
+        // label that was never created in this repo.
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                `Label(s) not applied: ${missing.join(", ")}. Gitea accepted the ` +
+                `request but resolved no such label in ${REPO_OWNER}/${REPO_NAME} ` +
+                `(names are case-sensitive and the label must already exist). ` +
+                `Labels now on #${issue_number}: ${applied.join(", ") || "(none)"}`,
+            },
+          ],
+        };
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Added ${labels.join(", ")} to #${issue_number}. Labels now: ${applied.join(", ")}`,
+          },
+        ],
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`[GITEA-MCP] Error adding labels: ${errorMessage}`);
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error adding labels: ${errorMessage}`,
+          },
+        ],
+      };
+    }
+  },
+);
+
+server.tool(
+  "remove_issue_label",
+  "Remove a single label from an issue or pull request. Use the PR number for pull requests.",
+  {
+    issue_number: z
+      .number()
+      .describe("The issue or pull request number to remove the label from"),
+    label: z.string().describe("Name of the label to remove"),
+  },
+  async ({ issue_number, label }) => {
+    try {
+      // The delete endpoint is keyed by label ID, so resolve the name
+      // against the labels actually on this issue first.
+      const current = (await giteaRequest(
+        `/repos/${REPO_OWNER}/${REPO_NAME}/issues/${issue_number}/labels`,
+      )) as GiteaLabel[];
+
+      const match = Array.isArray(current)
+        ? current.find((l) => l?.name === label)
+        : undefined;
+
+      if (!match) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `#${issue_number} has no label "${label}" — nothing to remove. Current labels: ${labelNames(current).join(", ") || "(none)"}`,
+            },
+          ],
+        };
+      }
+
+      await giteaRequest(
+        `/repos/${REPO_OWNER}/${REPO_NAME}/issues/${issue_number}/labels/${match.id}`,
+        "DELETE",
+      );
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Removed "${label}" from #${issue_number}.`,
+          },
+        ],
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`[GITEA-MCP] Error removing label: ${errorMessage}`);
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error removing label: ${errorMessage}`,
+          },
+        ],
+      };
+    }
+  },
+);
+
+server.tool(
+  "list_issue_labels",
+  "List the labels currently on an issue or pull request. Use the PR number for pull requests.",
+  {
+    issue_number: z.number().describe("The issue or pull request number"),
+  },
+  async ({ issue_number }) => {
+    try {
+      const current = await giteaRequest(
+        `/repos/${REPO_OWNER}/${REPO_NAME}/issues/${issue_number}/labels`,
+      );
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Labels on #${issue_number}: ${labelNames(current).join(", ") || "(none)"}`,
+          },
+        ],
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.error(`[GITEA-MCP] Error listing labels: ${errorMessage}`);
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error listing labels: ${errorMessage}`,
           },
         ],
       };
