@@ -364,7 +364,22 @@ runs:
         fi
 
     - name: Revoke app token
-      if: always() && inputs.github_token == ''
+      # Only meaningful for an EPHEMERAL GitHub App installation token that this
+      # action minted itself via OIDC. Both other paths hand us a long-lived
+      # token we do not own and must not try to revoke.
+      #
+      # `gitea_token` is the load-bearing half of this condition. src/github/
+      # token.ts:61 assigns the Gitea token to the very same output this step
+      # reads (`steps.prepare.outputs.GITHUB_TOKEN` — the name is a lie on a
+      # Gitea deployment), and `inputs.github_token` is empty on every Gitea run
+      # because the runner passes `gitea_token` instead. So without this guard
+      # the step fired on EVERY run and sent
+      #     Authorization: Bearer <DEPS_BOT_TOKEN>
+      # to api.github.com — shipping the Gitea bot secret to a third party that
+      # has no business seeing it, and logging it there. GitHub answered 404
+      # ("page not found") since it has no /installation/token for that token,
+      # and curl without -f exits 0, so it never failed loudly enough to notice.
+      if: always() && inputs.github_token == '' && inputs.gitea_token == ''
       shell: bash
       run: |
         curl -L \
