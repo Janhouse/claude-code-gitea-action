@@ -8,12 +8,17 @@ export function createJobRunLink(
   repo: string,
   runId: string,
 ): string {
-  // For Gitea, use a different path structure or skip actions link if not supported
-  const jobRunUrl = isGiteaInstance()
-    ? `${getServerUrl()}/${owner}/${repo}` // Gitea doesn't have GitHub Actions UI
-    : `${getServerUrl()}/${owner}/${repo}/actions/runs/${runId}`;
-  const linkText = isGiteaInstance() ? "View repository" : "View job run";
-  return `[${linkText}](${jobRunUrl})`;
+  // Gitea does have an Actions UI, at the same /actions/runs/<id> path — the
+  // previous "skip it, Gitea has no Actions UI" branch linked to the repo root
+  // instead, which is why these comments carried no link to their own run.
+  //
+  // owner/repo is the repo the issue lives in, and callers pass
+  // context.runId, which is GITHUB_RUN_NUMBER — neither addresses the run.
+  // The workflow runs in GITHUB_REPOSITORY, and the URL takes the run's ID.
+  // Both fall back to the passed values, which are correct on plain GitHub.
+  const runRepo = process.env.GITHUB_REPOSITORY || `${owner}/${repo}`;
+  const runRef = process.env.GITHUB_RUN_ID || runId;
+  return `[View job run](${getServerUrl()}/${runRepo}/actions/runs/${runRef})`;
 }
 
 export function createBranchLink(
@@ -21,8 +26,10 @@ export function createBranchLink(
   repo: string,
   branchName: string,
 ): string {
-  // Both GitHub and Gitea use similar branch URL structure
-  const branchUrl = `${getServerUrl()}/${owner}/${repo}/tree/${branchName}`;
+  // NOT the same structure: /tree/<branch> is GitHub's, Gitea serves the same
+  // thing at /src/branch/<branch> and 404s on /tree/.
+  const branchPath = isGiteaInstance() ? "src/branch" : "tree";
+  const branchUrl = `${getServerUrl()}/${owner}/${repo}/${branchPath}/${branchName}`;
   return `\n[View branch](${branchUrl})`;
 }
 
