@@ -27,20 +27,10 @@ async function run() {
     const octokit = createOctokit(githubToken);
 
     const serverUrl = getServerUrl();
-    // Both halves of this URL used to be wrong on a Gitea dispatch-runner setup.
-    //
-    // owner/repo here is the TARGET repo — the one the issue lives in — because
-    // the context is parsed from a synthesised event. The workflow run is in the
-    // repo that DISPATCHED us, which the runner exports as GITHUB_REPOSITORY.
-    // Linking to the target gave e.g. /janhouse/signer/actions/runs/... , a repo
-    // that has no such run.
-    //
-    // And Gitea's run URL takes the run's ID, not its per-repo run_number: run
-    // 4305 is /actions/runs/4305 while its run_number is 274. GITHUB_RUN_NUMBER
-    // therefore pointed at an unrelated (usually nonexistent) run.
-    //
-    // Fall back to the old values rather than emitting a broken link if either
-    // env var is absent — on plain GitHub, GITHUB_REPOSITORY is the same repo.
+    // owner/repo comes from a synthesised event, so it is the repo the issue
+    // lives in — not the one running this workflow. Gitea's run URL also takes
+    // the run's ID, not its run_number. Both fall back to the old values, which
+    // are already correct on plain GitHub.
     const runRepo = process.env.GITHUB_REPOSITORY || `${owner}/${repo}`;
     const runRef = process.env.GITHUB_RUN_ID || process.env.GITHUB_RUN_NUMBER;
     const jobUrl = `${serverUrl}/${runRepo}/actions/runs/${runRef}`;
