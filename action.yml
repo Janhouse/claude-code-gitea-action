@@ -12,6 +12,10 @@ inputs:
   assignee_trigger:
     description: "The assignee username that triggers the action (e.g. @claude)"
     required: false
+  allowed_bots:
+    description: "Comma-separated bot logins (Gitea 28+ / GitHub user type 'Bot') allowed to trigger the action, or '*' for all. Other bot actors are refused."
+    required: false
+    default: ""
   label_trigger:
     description: "The label that triggers the action (e.g. claude)"
     required: false
@@ -191,6 +195,7 @@ runs:
         MODE: ${{ inputs.mode }}
         TRIGGER_PHRASE: ${{ inputs.trigger_phrase }}
         ASSIGNEE_TRIGGER: ${{ inputs.assignee_trigger }}
+        ALLOWED_BOTS: ${{ inputs.allowed_bots }}
         LABEL_TRIGGER: ${{ inputs.label_trigger }}
         BASE_BRANCH: ${{ inputs.base_branch }}
         BRANCH_PREFIX: ${{ inputs.branch_prefix }}

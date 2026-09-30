@@ -21,15 +21,22 @@ export async function checkHumanActor(
 
   console.log(`Actor type: ${actorType}`);
 
-  // GitHub returns type: "User" | "Bot" | "Organization"
-  // Gitea doesn't return a type field, so we need to handle both cases
+  // GitHub returns type: "User" | "Bot" | "Organization". Gitea omitted the
+  // field before 28.0.0; since then it returns the same enum, with "Bot" for
+  // its token-only bot accounts. Bots are refused unless named in
+  // `allowed_bots` (comma-separated logins, or "*"), like upstream's input.
+  if (actorType === "Bot" && isAllowedBot(githubContext.actor)) {
+    console.log(`Allowed bot actor: ${githubContext.actor}`);
+    return;
+  }
   if (actorType !== undefined && actorType !== "User") {
     throw new Error(
-      `Workflow initiated by non-human actor: ${githubContext.actor} (type: ${actorType}).`,
+      `Workflow initiated by non-human actor: ${githubContext.actor} (type: ${actorType}). ` +
+        `Add it to allowed_bots to permit it.`,
     );
   }
 
-  // For Gitea (where type is undefined), we assume human actor since:
+  // For Gitea < 28 (type is undefined), we assume human actor since:
   // 1. They successfully authenticated to trigger the workflow
   // 2. Gitea doesn't have the same bot detection mechanisms as GitHub
   // 3. The risk is lower in self-hosted environments
@@ -41,4 +48,12 @@ export async function checkHumanActor(
   } else {
     console.log(`Verified human actor: ${githubContext.actor}`);
   }
+}
+
+function isAllowedBot(actor: string): boolean {
+  const allowed = (process.env.ALLOWED_BOTS ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  return allowed.includes("*") || allowed.includes(actor.toLowerCase());
 }
