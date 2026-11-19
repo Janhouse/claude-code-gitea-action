@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { branchHeadSha } from "./branch-head";
 
 /**
  * Setup the appropriate branch based on the event type:
@@ -107,7 +108,7 @@ export async function setupBranch(
       branch: sourceBranch,
     });
 
-    const currentSHA = sourceBranchRef.data.commit.sha;
+    const currentSHA = branchHeadSha(sourceBranchRef.data);
     console.log(`Source branch SHA: ${currentSHA}`);
 
     // For commit signing, defer branch creation to the file ops server

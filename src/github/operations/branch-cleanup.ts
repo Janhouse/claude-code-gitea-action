@@ -1,4 +1,5 @@
 import type { Octokits } from "../api/client";
+import { branchHeadSha, branchHeadsDiffer } from "./branch-head";
 import { getServerUrl, isGiteaInstance } from "../api/config";
 import { $ } from "bun";
 
@@ -48,9 +49,9 @@ export async function checkAndCommitOrDeleteBranch(
       ]);
 
       // Compare commit SHAs to see if there are any differences
-      const baseSHA = baseBranchInfo.data.commit.sha;
-      const claudeSHA = claudeBranchInfo.data.commit.sha;
-      const hasCommits = baseSHA !== claudeSHA;
+      const baseSHA = branchHeadSha(baseBranchInfo.data);
+      const claudeSHA = branchHeadSha(claudeBranchInfo.data);
+      const hasCommits = branchHeadsDiffer(baseSHA, claudeSHA);
 
       // If there are no commits, check for uncommitted changes if not using commit signing
       if (!hasCommits) {

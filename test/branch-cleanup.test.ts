@@ -29,13 +29,19 @@ describe("checkAndCommitOrDeleteBranch", () => {
           compareCommitsWithBasehead: async () => ({
             data: compareResponse || { total_commits: 0 },
           }),
-          getBranch: async () => {
+          // Gitea's branch API: the head commit is `commit.id` (no `sha`).
+          // The Claude branch sits on the base commit unless the compare
+          // response says Claude committed something.
+          getBranch: async ({ branch }: { branch: string }) => {
             if (!branchExists) {
               const error: any = new Error("Not Found");
               error.status = 404;
               throw error;
             }
-            return { data: {} };
+            const claudeCommitted = (compareResponse?.total_commits ?? 0) > 0;
+            const id =
+              branch === "main" || !claudeCommitted ? "base-sha" : "claude-sha";
+            return { data: { name: branch, commit: { id } } };
           },
         },
         git: {
@@ -111,7 +117,15 @@ describe("checkAndCommitOrDeleteBranch", () => {
           compareCommitsWithBasehead: async () => {
             throw new Error("API error");
           },
-          getBranch: async () => ({ data: {} }), // Branch exists
+          // The branch exists; comparing its head with the base fails.
+          getBranch: (() => {
+            let calls = 0;
+            return async () => {
+              calls++;
+              if (calls === 1) return { data: { commit: { id: "x" } } };
+              throw new Error("API error");
+            };
+          })(),
         },
         git: {
           deleteRef: async () => ({ data: {} }),

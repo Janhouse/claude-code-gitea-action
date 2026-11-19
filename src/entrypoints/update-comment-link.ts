@@ -1,4 +1,8 @@
 #!/usr/bin/env bun
+import {
+  branchHeadSha,
+  branchHeadsDiffer,
+} from "../github/operations/branch-head";
 
 import { createOctokit } from "../github/api/client";
 import * as fs from "fs/promises";
@@ -125,9 +129,9 @@ async function run() {
             octokit.rest.repos.getBranch({ owner, repo, branch: claudeBranch }),
           ]);
 
-          const baseSHA = baseBranchInfo.data.commit.sha;
-          const claudeSHA = claudeBranchInfo.data.commit.sha;
-          const hasChanges = baseSHA !== claudeSHA;
+          const baseSHA = branchHeadSha(baseBranchInfo.data);
+          const claudeSHA = branchHeadSha(claudeBranchInfo.data);
+          const hasChanges = branchHeadsDiffer(baseSHA, claudeSHA);
 
           // If there are changes, add the PR URL
           if (hasChanges) {
